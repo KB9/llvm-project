@@ -1786,7 +1786,13 @@ bool RISCVInstrInfo::isBranchOffsetInRange(unsigned BranchOp,
     return isInt<13>(BrOffset);
   case RISCV::JAL:
   case RISCV::PseudoBR:
-    return isInt<21>(BrOffset);
+    // PseudoBR expands to `JAL X0, label` which is unconditionally compressed
+    // to `C_J label` when the C extension is enabled.
+    // It is not possible to determine whether a JAL instruction will be
+    // compressed without checking for an X0 operand. There is no way to do this
+    // here so conservatively report the range of the C_J in case it is
+    // compressed.
+    return STI.hasStdExtC() ? isInt<11>(BrOffset) : isInt<21>(BrOffset);
   case RISCV::PseudoJump:
     return isInt<32>(SignExtend64(BrOffset + 0x800, XLen));
   }
